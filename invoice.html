@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Invoice Builder</title>
+
+  <!-- Simple modern styles (feel free to tweak) -->
+  <style>
+    :root{
+      --accent:#0f172a; /* navy */
+      --green:#10b981;
+      --muted:#f6f8fb;
+      --card:#ffffff;
+      --border:#e6e9ef;
+      --danger:#ef4444;
+      --shadow: 0 6px 18px rgba(20,24,40,0.06);
+      --radius:10px;
+      --maxwidth:1100px;
+      --pad:20px;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Arial,sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#fbfdff 0,#f5f7fb 100%);padding:28px;display:flex;justify-content:center}
+    .wrap{width:100%;max-width:var(--maxwidth);display:grid;grid-template-columns:1fr 300px;gap:22px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:var(--pad)}
+    header{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px}
+    header h1{font-weight:600;letter-spacing:2px;color:var(--accent);margin:0;font-size:28px}
+    .left-column{padding:18px}
+    .logo-uploader{width:150px;height:90px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--muted);cursor:pointer;overflow:hidden}
+    .logo-uploader img{height:100%;width:auto;display:block}
+    label.input, .field {display:block;margin-bottom:12px}
+    .input small{display:block;color:#6b7280;margin-bottom:6px;font-size:13px}
+    input[type="text"], input[type="number"], input[type="date"], select, textarea{
+      width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:14px;color:#111;
+    }
+    .two-cols{display:flex;gap:12px}
+    .two-cols > *{flex:1}
+    .items-table{width:100%;border-collapse:collapse;margin-top:12px}
+    .items-table thead th{background:var(--accent);color:#fff;padding:10px;border-radius:6px 6px 0 0;font-weight:600;text-align:left}
+    .items-table td{padding:10px;border-bottom:1px solid #eef2f7}
+    .items-table input{font-size:14px;padding:6px}
+    .add-item{margin-top:10px;display:inline-block;padding:8px 10px;border-radius:8px;border:1px solid #dbe6dd;color:var(--green);cursor:pointer;background:#f8fffb}
+    .remove-btn{background:transparent;border:1px solid var(--danger);color:var(--danger);padding:6px 8px;border-radius:6px;cursor:pointer}
+    .summary{margin-top:12px}
+    .summary-row{display:flex;justify-content:space-between;padding:8px 6px}
+    .muted{color:#6b7280}
+    .right-sidebar{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+    .green-btn{background:var(--green);color:#fff;padding:10px;border-radius:8px;border:0;cursor:pointer}
+    .ghost-btn{background:transparent;border:1px solid var(--border);padding:10px;border-radius:8px;cursor:pointer}
+    .small{font-size:13px;padding:8px}
+    .inline{display:flex;gap:8px;align-items:center}
+    footer{font-size:12px;color:#7b8794;margin-top:12px}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr;max-width:900px}}
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <!-- MAIN INVOICE CARD -->
+    <div class="card" id="invoice-root">
+      <header>
+        <h1>INVOICE</h1>
+        <div style="text-align:right">
+          <div style="margin-bottom:6px"><small class="muted">#</small></div>
+          <input id="invoice-number" type="text" class="small" style="width:140px" />
+        </div>
+      </header>
+
+      <div class="left-column">
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div>
+            <div class="logo-uploader" id="logoBox" title="Click to upload logo">
+              <span id="logoPlaceholder">+ Add Your Logo</span>
+            </div>
+            <input id="logoInput" type="file" accept="image/*" style="display:none" />
+          </div>
+
+          <div style="flex:1">
+            <label class="input">
+              <small>Company Name</small>
+              <input id="companyName" type="text" placeholder="Your company or name" value="Aveeno" />
+            </label>
+
+            <div class="two-cols">
+              <label class="input" style="flex:1">
+                <small>Bill To</small>
+                <input id="billTo" type="text" placeholder="Who is this to?" />
+              </label>
+              <label class="input" style="flex:1">
+                <small>Ship From (optional)</small>
+                <input id="shipFrom" type="text" placeholder="(optional)" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note / Items -->
+        <div style="margin-top:14px">
+          <div style="background:var(--accent);color:#fff;padding:10px;border-radius:6px;font-weight:600">Note</div>
+
+          <table class="items-table" id="itemsTable">
+            <thead>
+              <tr>
+                <th style="width:50%">Description</th>
+                <th style="width:12%">Qty</th>
+                <th style="width:16%">Price</th>
+                <th style="width:16%">Amount</th>
+                <th style="width:6%"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody">
+              <!-- JS will insert rows -->
+            </tbody>
+          </table>
+
+          <button class="add-item" id="addItemBtn">+ Line Item</button>
+        </div>
+
+        <div style="margin-top:18px">
+          <label class="field">
+            <small>Notes</small>
+            <textarea id="notes" rows="3" placeholder="Notes - any relevant information not already covered"></textarea>
+          </label>
+
+          <label class="field">
+            <small>Terms</small>
+            <textarea id="terms" rows="2" placeholder="Terms and conditions - late fees, payment methods, delivery schedule"></textarea>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="card right-sidebar">
+      <div>
+        <label class="input">
+          <small>Date</small>
+          <input id="invoiceDate" type="date" />
+        </label>
+
+        <label class="input">
+          <small>Due Date</small>
+          <input id="dueDate" type="date" />
+        </label>
+
+        <label class="input">
+          <small>PO Number</small>
+          <input id="poNumber" type="text" />
+        </label>
+
+        <label class="input">
+          <small>Currency</small>
+          <select id="currencySelector">
+            <option value="$" selected>USD ($)</option>
+            <option value="€">EUR (€)</option>
+            <option value="£">GBP (£)</option>
+            <option value="Rs">PKR (Rs)</option>
+            <option value="¥">JPY (¥)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="summary card" style="padding:12px;border-radius:8px">
+        <div class="summary-row"><div class="muted">Subtotal</div><div id="subtotal">$0.00</div></div>
+
+        <div class="summary-row">
+          <div style="width:60%">
+            <small class="muted">Discount (%)</small>
+            <input id="discount" type="number" min="0" value="0" />
+          </div>
+          <div style="width:38%;text-align:right" id="discountVal">$0.00</div>
+        </div>
+
+        <div class="summary-row">
+          <div style="width:60%">
+            <small class="muted">Tax (%)</small>
+            <input id="tax" type="number" min="0" value="0" />
+          </div>
+          <div style="width:38%;text-align:right" id="taxVal">$0.00</div>
+        </div>
+
+        <div class="summary-row">
+          <div style="width:60%">
+            <small class="muted">Shipping</small>
+            <input id="shipping" type="number" min="0" value="0" />
+          </div>
+          <div style="width:38%;text-align:right" id="shippingVal">$0.00</div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eef2f7;margin:8px 0" />
+
+        <div class="summary-row" style="font-weight:700">
+          <div>Total</div>
+          <div id="total">$0.00</div>
+        </div>
+
+        <div class="summary-row" style="margin-top:8px">
+          <div style="width:60%">
+            <small class="muted">Amount Paid</small>
+            <input id="paid" type="number" min="0" value="0" />
+          </div>
+          <div style="width:38%;text-align:right" id="paidVal">$0.00</div>
+        </div>
+
+        <div class="summary-row" style="margin-top:8px;font-weight:600">
+          <div>Balance Due</div>
+          <div id="balanceDue">$0.00</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+        <button class="green-btn" id="downloadPdf">⬇ Download PDF</button>
+        <button class="ghost-btn" id="saveBtn">Save as JSON</button>
+        <button class="ghost-btn" id="loadBtn">Load last saved</button>
+      </div>
+
+      <footer>
+        <div class="muted">Save default settings to reuse layout later.</div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- CDNs for html2canvas and jsPDF to export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    // ---------- Utilities ----------
+    const $ = id => document.getElementById(id);
+    const currencySymbolEl = $('currencySelector');
+    let currencySymbol = currencySymbolEl.value || '$';
+
+    function formatMoney(num){
+      // ensure we do digit-by-digit numeric rounding to 2 decimals
+      const n = Number(num) || 0;
+      const rounded = Math.round((n + Number.EPSILON) * 100) / 100;
+      return currencySymbol + rounded.toFixed(2);
+    }
+
+    // ---------- Defaults & Elements ----------
+    const itemsBody = $('itemsBody');
+    const addItemBtn = $('addItemBtn');
+    const subtotalEl = $('subtotal');
+    const discountEl = $('discount');
+    const taxEl = $('tax');
+    const shippingEl = $('shipping');
+    const totalEl = $('total');
+    const discountValEl = $('discountVal');
+    const taxValEl = $('taxVal');
+    const shippingValEl = $('shippingVal');
+    const paidEl = $('paid');
+    const paidValEl = $('paidVal');
+    const balanceEl = $('balanceDue');
+    const invoiceNumberEl = $('invoice-number');
+    const invoiceDateEl = $('invoiceDate');
+    const dueDateEl = $('dueDate');
+    const notesEl = $('notes');
+    const termsEl = $('terms');
+    const companyNameEl = $('companyName');
+    const billToEl = $('billTo');
+    const shipFromEl = $('shipFrom');
+    const logoBox = $('logoBox');
+    const logoInput = $('logoInput');
+    const logoPlaceholder = $('logoPlaceholder');
+
+    // Seed invoice number and dates
+    invoiceNumberEl.value = Math.floor(10000 + Math.random()*90000);
+    const today = new Date().toISOString().slice(0,10);
+    invoiceDateEl.value = today;
+    const due = new Date(); due.setDate(due.getDate()+1);
+    dueDateEl.value = due.toISOString().slice(0,10);
+
+    // ---------- Logo upload ----------
+    logoBox.addEventListener('click', ()=>logoInput.click());
+    logoInput.addEventListener('change', e=>{
+      const f = e.target.files[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      logoBox.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = url;
+      logoBox.appendChild(img);
+    });
+
+    // ---------- Items handling ----------
+    function createRow(description='', qty=1, price=0){
+      const tr = document.createElement('tr');
+
+      const tdDesc = document.createElement('td');
+      const descInput = document.createElement('input');
+      descInput.type='text';
+      descInput.value = description;
+      descInput.placeholder = 'Description of item/service...';
+      descInput.style.width='100%';
+      tdDesc.appendChild(descInput);
+
+      const tdQty = document.createElement('td');
+      const qtyInput = document.createElement('input');
+      qtyInput.type='number'; qtyInput.min='0'; qtyInput.value = qty; qtyInput.style.width='72px';
+      tdQty.appendChild(qtyInput);
+
+      const tdPrice = document.createElement('td');
+      const priceInput = document.createElement('input');
+      priceInput.type='number'; priceInput.min='0'; priceInput.value = price; priceInput.style.width='110px';
+      tdPrice.appendChild(priceInput);
+
+      const tdAmount = document.createElement('td');
+      tdAmount.style.textAlign='right';
+      const amountSpan = document.createElement('div');
+      amountSpan.textContent = formatMoney(0);
+      tdAmount.appendChild(amountSpan);
+
+      const tdActions = document.createElement('td');
+      const remBtn = document.createElement('button');
+      remBtn.className='remove-btn';
+      remBtn.innerText='✕';
+      tdActions.appendChild(remBtn);
+
+      tr.appendChild(tdDesc);
+      tr.appendChild(tdQty);
+      tr.appendChild(tdPrice);
+      tr.appendChild(tdAmount);
+      tr.appendChild(tdActions);
+
+      // Events
+      function updateAmount(){
+        const q = Number(qtyInput.value) || 0;
+        const p = Number(priceInput.value) || 0;
+        const amt = Math.round((q * p + Number.EPSILON) * 100)/100;
+        amountSpan.textContent = formatMoney(amt);
+        recalcTotals();
+      }
+      qtyInput.addEventListener('input', updateAmount);
+      priceInput.addEventListener('input', updateAmount);
+      descInput.addEventListener('input', ()=>saveLocalDraft()); // minor save
+      remBtn.addEventListener('click', ()=>{
+        tr.remove();
+        recalcTotals();
+        saveLocalDraft();
+      });
+
+      // initial
+      updateAmount();
+      return tr;
+    }
+
+    // Start with one blank row
+    itemsBody.appendChild(createRow('',1,0));
+
+    addItemBtn.addEventListener('click', ()=>{
+      itemsBody.appendChild(createRow('',1,0));
+      saveLocalDraft();
+    });
+
+    // ---------- Calculations ----------
+    function getAllItemAmounts(){
+      const rows = [...itemsBody.querySelectorAll('tr')];
+      const amounts = rows.map(tr=>{
+        const qty = Number(tr.querySelector('td:nth-child(2) input').value) || 0;
+        const price = Number(tr.querySelector('td:nth-child(3) input').value) || 0;
+        const amt = Math.round((qty*price + Number.EPSILON)*100)/100;
+        return amt;
+      });
+      return amounts;
+    }
+
+    function recalcTotals(){
+      // step-by-step arithmetic to reduce floating point surprises
+      const amounts = getAllItemAmounts();
+      let subtotal = 0;
+      for (let a of amounts){
+        subtotal = Math.round((subtotal + a + Number.EPSILON)*100)/100;
+      }
+
+      const discountPct = Number(discountEl.value) || 0;
+      const discountVal = Math.round((subtotal * (discountPct/100) + Number.EPSILON)*100)/100;
+
+      const taxPct = Number(taxEl.value) || 0;
+      const taxable = Math.round((subtotal - discountVal + Number.EPSILON)*100)/100;
+      const taxVal = Math.round((taxable * (taxPct/100) + Number.EPSILON)*100)/100;
+
+      const shippingValNum = Math.round((Number(shippingEl.value) || 0 + Number.EPSILON)*100)/100;
+
+      let total = 0;
+      total = Math.round((subtotal - discountVal + taxVal + shippingValNum + Number.EPSILON)*100)/100;
+
+      const paidNum = Math.round((Number(paidEl.value) || 0 + Number.EPSILON)*100)/100;
+      const balance = Math.round((total - paidNum + Number.EPSILON)*100)/100;
+
+      // Update DOM
+      subtotalEl.textContent = formatMoney(subtotal);
+      discountValEl.textContent = formatMoney(discountVal);
+      taxValEl.textContent = formatMoney(taxVal);
+      shippingValEl.textContent = formatMoney(shippingValNum);
+      totalEl.textContent = formatMoney(total);
+      paidValEl.textContent = formatMoney(paidNum);
+      balanceEl.textContent = formatMoney(balance);
+
+      saveLocalDraft();
+    }
+
+    // Recalculate on changes
+    discountEl.addEventListener('input', recalcTotals);
+    taxEl.addEventListener('input', recalcTotals);
+    shippingEl.addEventListener('input', recalcTotals);
+    paidEl.addEventListener('input', recalcTotals);
+    currencySymbolEl.addEventListener('change', ()=>{
+      currencySymbol = currencySymbolEl.value;
+      recalcTotals();
+    });
+
+    // fire periodic recalc (for newly added rows)
+    setInterval(recalcTotals, 800);
+
+    // ---------- PDF Export ----------
+    const { jsPDF } = window.jspdf;
+
+    $('downloadPdf').addEventListener('click', async ()=>{
+      // enlarge render width for better PDF quality
+      const root = document.getElementById('invoice-root');
+      // temporarily set background white for clean PDF
+      const oldBg = root.style.background;
+      root.style.background = '#ffffff';
+      const canvas = await html2canvas(root, {scale:2, useCORS:true});
+      root.style.background = oldBg;
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p','pt','a4'); // points
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // calculate image dimensions to fit A4 preserving aspect ratio
+      const imgWidth = pageWidth - 40; // margins
+      const ratio = canvas.width / canvas.height;
+      const imgHeight = imgWidth / ratio;
+
+      pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+      pdf.save('invoice_' + invoiceNumberEl.value + '.pdf');
+    });
+
+    // ---------- Save / Load local JSON ----------
+    function saveLocalDraft(){
+      try {
+        const payload = {
+          invoiceNumber: invoiceNumberEl.value,
+          date: invoiceDateEl.value,
+          due: dueDateEl.value,
+          companyName: companyNameEl.value,
+          billTo: billToEl.value,
+          shipFrom: shipFromEl.value,
+          items: [...itemsBody.querySelectorAll('tr')].map(tr=>({
+            desc: tr.querySelector('td:nth-child(1) input').value,
+            qty: Number(tr.querySelector('td:nth-child(2) input').value) || 0,
+            price: Number(tr.querySelector('td:nth-child(3) input').value) || 0
+          })),
+          discount: Number(discountEl.value)||0,
+          tax: Number(taxEl.value)||0,
+          shipping: Number(shippingEl.value)||0,
+          paid: Number(paidEl.value)||0,
+          currency: currencySymbolEl.value,
+          notes: notesEl.value, terms: termsEl.value
+        };
+        localStorage.setItem('invoice_draft', JSON.stringify(payload));
+      } catch(e){}
+    }
+
+    $('saveBtn').addEventListener('click', ()=>{
+      saveLocalDraft();
+      alert('Saved to local storage (browser). Use "Load last saved" to restore.');
+    });
+
+    $('loadBtn').addEventListener('click', ()=>{
+      const data = localStorage.getItem('invoice_draft');
+      if (!data) { alert('No saved invoice found.'); return; }
+      const p = JSON.parse(data);
+      invoiceNumberEl.value = p.invoiceNumber || invoiceNumberEl.value;
+      invoiceDateEl.value = p.date || invoiceDateEl.value;
+      dueDateEl.value = p.due || dueDateEl.value;
+      companyNameEl.value = p.companyName || '';
+      billToEl.value = p.billTo || '';
+      shipFromEl.value = p.shipFrom || '';
+      discountEl.value = p.discount || 0;
+      taxEl.value = p.tax || 0;
+      shippingEl.value = p.shipping || 0;
+      paidEl.value = p.paid || 0;
+      currencySymbolEl.value = p.currency || '$';
+      currencySymbol = currencySymbolEl.value;
+
+      // clear items and re-add
+      itemsBody.innerHTML = '';
+      if (p.items && p.items.length){
+        for (const it of p.items) itemsBody.appendChild(createRow(it.desc, it.qty, it.price));
+      } else {
+        itemsBody.appendChild(createRow('',1,0));
+      }
+
+      notesEl.value = p.notes || '';
+      termsEl.value = p.terms || '';
+      recalcTotals();
+    });
+
+    // ---------- Save while leaving ----------
+    window.addEventListener('beforeunload', saveLocalDraft);
+
+    // initial recalc
+    recalcTotals();
+
+  </script>
+</body>
+</html>
